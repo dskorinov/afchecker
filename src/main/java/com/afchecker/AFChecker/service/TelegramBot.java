@@ -37,11 +37,16 @@ public class TelegramBot extends TelegramLongPollingBot {
             DbFunctions.setDataSource(config);
             System.out.println(update);
             try {
+                long replyMessageId = 0;
+                if( update.getMessage().getReplyToMessage() != null) {
+                    replyMessageId = update.getMessage().getReplyToMessage().getMessageId();
+                }
+
                 result = Rules.messageCheck(config,
                         messageText,
-                        update.getMessage().getUserShared().getUserId(),
+                        update.getMessage().getFrom().getId(),
                         update.getMessage().getChatId(),
-                        update.getMessage().getReplyToMessage().getMessageId(),
+                        replyMessageId,
                         update.getMessage().getMessageId()
                 );
             } catch (SQLException e) {
