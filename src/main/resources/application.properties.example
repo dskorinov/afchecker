@@ -4,7 +4,7 @@ bot.token=bottoken
 
 
 #internal database
-spring.datasource.url=jdbc:sqlite:./message.db
+spring.datasource.url=jdbc:sqlite:./database/message.db
 spring.datasource.driver-class-name=org.sqlite.JDBC
 spring.datasource.username=
 spring.datasource.password=
@@ -14,8 +14,7 @@ data.source.table.prefix.msg=msg
 data.source.table.prefix.usr=usr
 
 #processing settings
-chat_whitelist=-993933863,238896592
-mode=training
-#delete, tag_admins
+mode=general
+#tag_admins
 spam_processing=tag_admins
 tag_admins_text=Administrators have been notified. Please do not respond to spam.
