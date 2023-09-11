@@ -30,10 +30,18 @@ public class TelegramBot extends TelegramLongPollingBot {
         return config.getToken();
     }
 
+    public void processSpamMessage(String chatId ){
+
+    }
+
     @Override
     public void onUpdateReceived(Update update) {
-
-        if(update.hasMessage() && update.getMessage().hasText()) {
+        //check against whitelist
+        if(config.getChatWhitelist() == null
+                || config.getChatWhitelist().contains(update.getMessage().getChatId().toString())) {
+            return;
+        }
+        if(update.hasMessage()&& update.getMessage().hasText()) {
             boolean isSpam;
             DbFunctions.setDataSource(config);
 
@@ -57,6 +65,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                         update.getMessage().getChatId(),
                         isSpam
                         );
+
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
