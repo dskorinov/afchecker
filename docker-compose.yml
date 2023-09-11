@@ -1,0 +1,8 @@
+version: '2.2'
+
+services:
+  bot:
+    build: .
+    volumes:
+      - ./database:/afchecker/database
+    restart: always

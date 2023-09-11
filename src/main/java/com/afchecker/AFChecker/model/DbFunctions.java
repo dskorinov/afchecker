@@ -83,7 +83,8 @@ public class DbFunctions {
 
             connection.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Database error: ", e);
+
         }
 
     }
