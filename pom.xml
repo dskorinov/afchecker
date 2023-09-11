@@ -17,8 +17,14 @@
 		<java.version>17</java.version>
 		<telegram.version>6.8.0</telegram.version>
 		<sqlite.version>3.42.0.1</sqlite.version>
+		<vdurmont.version>5.1.1</vdurmont.version>
 	</properties>
 	<dependencies>
+		<dependency>
+			<groupId>com.vdurmont</groupId>
+			<artifactId>emoji-java</artifactId>
+			<version>${vdurmont.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>

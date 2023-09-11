@@ -1,7 +1,9 @@
 package com.afchecker.AFChecker.model;
+
 import com.afchecker.AFChecker.config.BotConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import com.vdurmont.emoji.EmojiParser;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -10,11 +12,20 @@ import java.util.List;
 @Component
 @Slf4j
 public class Rules {
+    public static final int EMOJI_THRESHOLD = 3;
+    public static final int NEWLINE_THRESHOLD = 4;
+    public static final int EXCLAMATION_MARK_THRESHOLD = 4;
 
+    public static boolean messageCheck(
+            BotConfig config,
+            String messageText,
+            long userId,
+            long chatId,
+            long replyId,
+            long messageId
+    ) throws SQLException {
 
-    public static boolean messageCheck(BotConfig config, String messageText, long userId, long chatId, long replyId, long messageId) throws SQLException {
         log.info("Message_id={} Start message check. Chat_id={}", messageId, chatId);
-        boolean isMixed;
 
         if (DbFunctions.isHuman(config, userId)) {
             log.info("Message_id={} This is human (not spam). Stop message check.", messageId);
@@ -22,57 +33,64 @@ public class Rules {
         }
 
         if (DbFunctions.duplicateMessages(config, userId, messageText)) {
-            log.info("Message_id={} This is duplicated (spam) message. Stop message check.", messageId);
+            log.info("Message_id={} This is duplicate (spam) message. Stop message check.", messageId);
             return true;
         }
 
-        long spamProbability = 0;
-        spamProbability += 10 * regexpCheck(messageText);
-        log.info("Message_id={} Spam probability = {}.", messageId, spamProbability);
+        long spamProbability = regexpCheck(messageText, messageId);
 
-        isMixed = languagesMix(messageText, messageId);
+        boolean isMixed = languagesMix(messageText, messageId);
 
         boolean isExtendedAlphabet = containsModifiedLetters(messageText, messageId);
 
-        long addChecksSum = countUnicodeCharacters(messageText, messageId)
-                + countNewlines(messageText, messageId)
-                + countExclamationMarks(messageText, messageId);
+        long addChecksSum = ((countEmoji(messageText, messageId) > EMOJI_THRESHOLD) ? 1 : 0)
+                + ((countNewlines(messageText, messageId) > NEWLINE_THRESHOLD) ? 1 : 0)
+                + ((countExclamationMarks(messageText, messageId) > EXCLAMATION_MARK_THRESHOLD) ? 1 : 0);
 
-        if (((isMixed || spamProbability > 0) && addChecksSum > 1) || addChecksSum == 3 || isExtendedAlphabet) {
+        if (((isMixed || spamProbability > 0) && addChecksSum > 1)
+                || addChecksSum == 3
+                || isExtendedAlphabet) {
             log.info("Message_id={} Message check done: SPAM (advanced rules).", messageId);
             return true;
         }
 
-        log.info("Message_id={} Message check done. Chat_id={}", messageId, chatId);
+        log.info("Message_id={} Message check done (not spam). Chat_id={}", messageId, chatId);
 
         return false;
     }
 
-    private static long regexpCheck(String messageText) {
+    private static long regexpCheck(String messageText, long messageId) {
         int matchPoints = 0;
+        int spamProbability;
+        List<String> blacklist = Arrays.asList("00$", "00 $", "активн", "ответствен", "партн", "удалён", "работ", "обуч",
+                "писат", "личн", "сообщен", "крипт", "предлаг", "залив", "профит", "свобод", "сотрудничеств", "мотивац",
+                "депозит", "трейдин", "пиши", " лс ");
+
         String cleanedText = messageText.replaceAll("[^a-zA-Zа-яА-Я0-9\\s]", "").toLowerCase();
         int wordCount = cleanedText.split("\\s+").length;
 
-        List<String> blacklist = Arrays.asList("00$", "00 $", "активн", "ответствен", "партн", "удалён", "работ", "обуч",
-                "писат", "личн", "сообщен", "крипт", "предлаг", "залив", "профит", "свобод", "сотрудничеств", "мотивац",
-                "депозит", "трейдин", "пиши");
-
         if (wordCount > 5) {
             for (String word : blacklist) {
-                matchPoints += (cleanedText.length() - cleanedText.replace(word, "").length()) / word.length();
+                if (cleanedText.contains(word)) {
+                    matchPoints++;
+                }
             }
         }
+        spamProbability = Math.round((float) (100 * matchPoints) / (wordCount + 1));
+        log.info("Message_id={} Spam probability = {}.", messageId, spamProbability);
 
-        return Math.round(10.0 * matchPoints / (wordCount + 1.0));
+        return spamProbability;
     }
 
     private static boolean languagesMix(String messageText, long messageId) {
+        int mixedWordsCount = 0;
         String russianAlphabet = "^[а-яёА-ЯЁ]+$";
         String englishAlphabet = "^[a-zA-Z]+$";
         String pattern = "[^А-яЁёA-Za-z\\s]";
+
+        //clean message
         String text = messageText.replaceAll(pattern, "");
         String cleanedText = text.replaceAll("\\n", " ");
-        int mixedWordsCount = 0;
 
         for (String word : cleanedText.split(" ")) {
             if (word.length() > 4 && !word.matches(russianAlphabet) && !word.matches(englishAlphabet)) {
@@ -88,18 +106,22 @@ public class Rules {
     }
 
     private static boolean containsModifiedLetters(String messageText, long messageId) {
-        int[] modifiedRussianAlphabet = new int[]{0x1D04, 0x1D2B};
-        int[] modifiedLatinAlphabet = new int[]{0x1D00, 0x1D7F};
+        int modifiedRussianAlphabetStart = 0x1D04;
+        int modifiedRussianAlphabetEnd = 0x1D2B;
+        int modifiedLatinAlphabetStart = 0x1D00;
+        int modifiedLatinAlphabetEnd = 0x1D7F;
         int count = 0;
 
+        //check only first 100 characters
         for (int i = 0; i < messageText.length() && i < 100; i++) {
-            char currentChar = messageText.charAt(i);
-            if (contains(modifiedRussianAlphabet, currentChar) || contains(modifiedLatinAlphabet, currentChar)) {
+            int currentChar = messageText.charAt(i);
+            if (currentChar >= modifiedRussianAlphabetStart && currentChar <= modifiedRussianAlphabetEnd
+                    || currentChar >= modifiedLatinAlphabetStart && currentChar <= modifiedLatinAlphabetEnd) {
                 count++;
             }
         }
 
-        if (count > 3) {
+        if (count > 2) {
             log.info("Message_id={} Extended alphabet detected.", messageId);
             return true;
         }
@@ -107,35 +129,34 @@ public class Rules {
         return false;
     }
 
-    private static boolean contains(int[] array, int value) {
-        for (int element : array) {
-            if (element == value) {
-                return true;
-            }
-        }
-        return false;
-    }
+    private static int countEmoji(String messageText, long messageId) {
+        int emojiCount = EmojiParser.extractEmojis(messageText).size();
 
-    private static int countUnicodeCharacters(String messageText, long messageId) {
-        int unicodeCharacterCount = 0;
-        for (int i = 0; i < messageText.length(); i++) {
-            if (Character.isLetterOrDigit(messageText.charAt(i)) && !Character.isAlphabetic(messageText.charAt(i))) {
-                unicodeCharacterCount++;
-            }
-        }
-        log.info("Message_id={} Unicode character count = {}.", messageId, unicodeCharacterCount);
-        return unicodeCharacterCount;
+        log.info("Message_id={} Emoji count = {}. Threshold: {}.", messageId, emojiCount, EMOJI_THRESHOLD);
+        return emojiCount;
     }
 
     private static int countNewlines(String messageText, long messageId) {
-        int newlineCount = messageText.length() - messageText.replace("\n", "").length();
-        log.info("Message_id={} Newline count = {}.", messageId, newlineCount);
+        int newlineCount = 0;
+
+        for (int i = 0; i < messageText.length(); i++) {
+            if (messageText.charAt(i) == '\n') {
+                newlineCount++;
+            }
+        }
+        log.info("Message_id={} Newline count = {}. Threshold: {}.", messageId, newlineCount, NEWLINE_THRESHOLD);
         return newlineCount;
     }
 
     private static int countExclamationMarks(String messageText, long messageId) {
-        int exclamationMarkCount = messageText.length() - messageText.replace("!", "").length();
-        log.info("Message_id={} Exclamation mark count = {}.", messageId, exclamationMarkCount);
+        int exclamationMarkCount = 0;
+
+        for (int i = 0; i < messageText.length(); i++) {
+            if (messageText.charAt(i) == '!') {
+                exclamationMarkCount++;
+            }
+        }
+        log.info("Message_id={} Exclamation mark count = {}. Threshold: {}.", messageId, exclamationMarkCount, EXCLAMATION_MARK_THRESHOLD);
         return exclamationMarkCount;
     }
 }
