@@ -37,11 +37,16 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         //check against whitelist
-        if(config.getChatWhitelist() == null
-                || config.getChatWhitelist().contains(update.getMessage().getChatId().toString())) {
+        String chatId = update.getMessage().getChatId().toString();
+            if(update.hasMessage() &&
+                    (config.getChatWhitelist() != null && !config.getChatWhitelist().contains(chatId))) {
+                log.info("Skipping message. Whitelist mode is activated. Chat_id={}. Whitelist={}",
+                    update.getMessage().getChatId(),
+                    config.getChatWhitelist()
+                    );
             return;
         }
-        if(update.hasMessage()&& update.getMessage().hasText()) {
+        if(update.hasMessage() && update.getMessage().hasText()) {
             boolean isSpam;
             DbFunctions.setDataSource(config);
 

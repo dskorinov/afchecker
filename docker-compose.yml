@@ -4,5 +4,7 @@ services:
   bot:
     build: .
     volumes:
-      - ./database:/afchecker/database
+      - afchecker_database:/afchecker/database
     restart: always
+volumes:
+  afchecker_database:

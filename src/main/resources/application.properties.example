@@ -14,6 +14,7 @@ data.source.table.prefix.msg=msg
 data.source.table.prefix.usr=usr
 
 #processing settings
+chat_whitelist=
 mode=general
 #tag_admins
 spam_processing=tag_admins
