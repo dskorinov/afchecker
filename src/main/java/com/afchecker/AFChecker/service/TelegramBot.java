@@ -39,7 +39,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         //check against whitelist
         String chatId = update.getMessage().getChatId().toString();
             if(update.hasMessage() &&
-                    (config.getChatWhitelist() != null && !config.getChatWhitelist().contains(chatId))) {
+                    (!config.getChatWhitelist().isEmpty() && !config.getChatWhitelist().contains(chatId))) {
                 log.info("Skipping message. Whitelist mode is activated. Chat_id={}. Whitelist={}",
                     update.getMessage().getChatId(),
                     config.getChatWhitelist()
