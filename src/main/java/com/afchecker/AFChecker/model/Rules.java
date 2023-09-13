@@ -91,7 +91,7 @@ public class Rules {
         //clean message
         String text = messageText.replaceAll(pattern, "");
         String cleanedText = text.replaceAll("\\n", " ");
-
+        //TODO: may be return count of mixed words and split this into two rules?
         for (String word : cleanedText.split(" ")) {
             if (word.length() > 4 && !word.matches(russianAlphabet) && !word.matches(englishAlphabet)) {
                 mixedWordsCount++;
