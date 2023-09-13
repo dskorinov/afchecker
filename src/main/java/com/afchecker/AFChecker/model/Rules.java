@@ -15,13 +15,17 @@ public class Rules {
     public static final int EMOJI_THRESHOLD = 3;
     public static final int NEWLINE_THRESHOLD = 4;
     public static final int EXCLAMATION_MARK_THRESHOLD = 4;
+    public static final int MIXED_WORD_THRESHOLD = 3;
+    public static final List<String> BLACKLIST_LIST = Arrays.asList("00$", "00 $", "активн", "ответствен", "партн", "удалён", "работ", "обуч",
+            "писат", "личн", "сообщен", "крипт", "предлаг", "залив", "профит", "свобод", "сотрудничеств", "мотивац",
+            "депозит", "трейдин", "пиши", " лс ");
+    public static final List<String> BLACKLIST_TAIL_LIST = Arrays.asList("подроб", "пиши", " лс ", " + ", "личн", "сообщ");
 
     public static boolean messageCheck(
             BotConfig config,
             String messageText,
             long userId,
             long chatId,
-            long replyId,
             long messageId
     ) throws SQLException {
 
@@ -37,19 +41,25 @@ public class Rules {
             return true;
         }
 
-        long spamProbability = regexpCheck(messageText, messageId);
+        long spamProbability = regexpCheck(messageText, messageId, BLACKLIST_LIST);
+        long spamProbabilityTail = 0;
+        if (messageText.length() > 100) {
+            spamProbabilityTail = regexpCheck(messageText.substring(messageText.length() - 100), messageId, BLACKLIST_TAIL_LIST);
+        }
 
-        boolean isMixed = languagesMix(messageText, messageId);
+        int isMixed = languagesMix(messageText, messageId);
 
         boolean isExtendedAlphabet = containsModifiedLetters(messageText, messageId);
 
         long addChecksSum = ((countEmoji(messageText, messageId) > EMOJI_THRESHOLD) ? 1 : 0)
                 + ((countNewlines(messageText, messageId) > NEWLINE_THRESHOLD) ? 1 : 0)
-                + ((countExclamationMarks(messageText, messageId) > EXCLAMATION_MARK_THRESHOLD) ? 1 : 0);
+                + ((countExclamationMarks(messageText, messageId) > EXCLAMATION_MARK_THRESHOLD) ? 1 : 0)
+                + ((spamProbabilityTail > 0) ? 1 : 0);
 
-        if (((isMixed || spamProbability > 0) && addChecksSum > 1)
-                || addChecksSum == 3
-                || isExtendedAlphabet) {
+        if (((isMixed > 1 || spamProbability > 0) && addChecksSum > 1)
+                || addChecksSum >= 3
+                || isExtendedAlphabet
+                || isMixed > MIXED_WORD_THRESHOLD) {
             log.info("Message_id={} Message check done: SPAM (advanced rules).", messageId);
             return true;
         }
@@ -59,12 +69,9 @@ public class Rules {
         return false;
     }
 
-    private static long regexpCheck(String messageText, long messageId) {
+    private static long regexpCheck(String messageText, long messageId, List<String> blacklist) {
         int matchPoints = 0;
         int spamProbability;
-        List<String> blacklist = Arrays.asList("00$", "00 $", "активн", "ответствен", "партн", "удалён", "работ", "обуч",
-                "писат", "личн", "сообщен", "крипт", "предлаг", "залив", "профит", "свобод", "сотрудничеств", "мотивац",
-                "депозит", "трейдин", "пиши", " лс ");
 
         String cleanedText = messageText.replaceAll("[^a-zA-Zа-яА-Я0-9\\s]", "").toLowerCase();
         int wordCount = cleanedText.split("\\s+").length;
@@ -82,7 +89,7 @@ public class Rules {
         return spamProbability;
     }
 
-    private static boolean languagesMix(String messageText, long messageId) {
+    private static int languagesMix(String messageText, long messageId) {
         int mixedWordsCount = 0;
         String russianAlphabet = "^[а-яёА-ЯЁ]+$";
         String englishAlphabet = "^[a-zA-Z]+$";
@@ -95,14 +102,14 @@ public class Rules {
         for (String word : cleanedText.split(" ")) {
             if (word.length() > 4 && !word.matches(russianAlphabet) && !word.matches(englishAlphabet)) {
                 mixedWordsCount++;
-                if (mixedWordsCount > 1) {
+                if (mixedWordsCount > MIXED_WORD_THRESHOLD) {
                     log.info("Message_id={} Mixed languages.", messageId);
-                    return true;
+                    return mixedWordsCount;
                 }
             }
         }
 
-        return false;
+        return mixedWordsCount;
     }
 
     private static boolean containsModifiedLetters(String messageText, long messageId) {

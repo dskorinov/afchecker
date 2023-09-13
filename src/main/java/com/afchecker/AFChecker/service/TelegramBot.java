@@ -86,14 +86,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                 log.info("Raw message: \n{}", update);
 
                 try {
-                    long replyMessageId = (update.getMessage().getReplyToMessage() != null)
-                            ? update.getMessage().getReplyToMessage().getMessageId() : 0;
 
                     isSpam = Rules.messageCheck(config,
                             update.getMessage().getText(),
                             update.getMessage().getFrom().getId(),
                             update.getMessage().getChatId(),
-                            replyMessageId,
                             update.getMessage().getMessageId()
                     );
                     DbFunctions.saveUser(config,
