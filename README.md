@@ -1,11 +1,15 @@
 # Anti-Fraud Checker
 
-Anti spam telegram bot. Effective and quick. Easy to install and run.
+Anti-spam telegram bot. Effective and quick. Easy to install and run.
 
 
 ## Build and run
 
 1. Clone repo
-2. Change settings in src/main/resources/application.properties.example and rename the file to src/main/resources/application.properties
-Hint: you need change only Telegram section in this file (bot.name and bot.token).
+2. Create env_file and set variables (see env_file.example)
+   ```
+   BOT_NAME=
+   BOT_TOKEN=
+   (optional)CHAT_WHITELIST=
+   ```
 3. run docker-compose up

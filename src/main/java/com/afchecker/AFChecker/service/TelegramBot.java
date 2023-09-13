@@ -37,7 +37,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     public void processSpamMessage(String chatId, long replyId) {
-        String text = "";
+        StringBuilder text = new StringBuilder();
         List<ChatMember> chatAdministrators = Collections.emptyList();
         try {
             //group chats have minus at the beginning
@@ -51,12 +51,12 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (!chatAdministrators.isEmpty()) {
                 for (ChatMember chatMember : chatAdministrators) {
                     if (chatMember.getUser().getUserName() != null) {
-                        text += "@" + chatMember.getUser().getUserName();
+                        text.append("@").append(chatMember.getUser().getUserName());
                     }
                 }
             }
-            text += " " + config.getTagAdminsText();
-            SendMessage request = new SendMessage(chatId, text);
+            text.append(" ").append(config.getTagAdminsText());
+            SendMessage request = new SendMessage(chatId, text.toString());
             request.setParseMode("HTML");
             request.setReplyToMessageId(Math.toIntExact(replyId));
             execute(request);

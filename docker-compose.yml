@@ -6,5 +6,7 @@ services:
     volumes:
       - afchecker_database:/afchecker/database
     restart: always
+    env_file:
+      - ./env_file
 volumes:
   afchecker_database:
