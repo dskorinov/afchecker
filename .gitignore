@@ -5,7 +5,10 @@ target/
 !**/src/test/**/target/
 *.db
 env_file
-
+todo.txt
+mvnw
+.mvn/
+mvnw.cmd
 ### STS ###
 .apt_generated
 .classpath
