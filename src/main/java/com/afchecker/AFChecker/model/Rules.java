@@ -41,10 +41,18 @@ public class Rules {
             return true;
         }
 
-        long spamProbability = regexpCheck(messageText, messageId, BLACKLIST_LIST);
+        long spamProbability = regexpCheck(messageText,
+                messageId,
+                BLACKLIST_LIST,
+                "Main black list.");
+
         long spamProbabilityTail = 0;
         if (messageText.length() > 100) {
-            spamProbabilityTail = regexpCheck(messageText.substring(messageText.length() - 100), messageId, BLACKLIST_TAIL_LIST);
+            spamProbabilityTail = regexpCheck(messageText.substring(messageText.length() - 100),
+                    messageId,
+                    BLACKLIST_TAIL_LIST,
+                    "Additional black list check."
+            );
         }
 
         int isMixed = languagesMix(messageText, messageId);
@@ -69,7 +77,7 @@ public class Rules {
         return false;
     }
 
-    private static long regexpCheck(String messageText, long messageId, List<String> blacklist) {
+    private static long regexpCheck(String messageText, long messageId, List<String> blacklist, String logListName) {
         int matchPoints = 0;
         int spamProbability;
 
@@ -84,7 +92,7 @@ public class Rules {
             }
         }
         spamProbability = Math.round((float) (100 * matchPoints) / (wordCount + 1));
-        log.info("Message_id={} Spam probability = {}.", messageId, spamProbability);
+        log.info("Message_id={} Spam probability = {}. Blacklist name = {}", messageId, spamProbability, logListName);
 
         return spamProbability;
     }
@@ -103,7 +111,7 @@ public class Rules {
             if (word.length() > 4 && !word.matches(russianAlphabet) && !word.matches(englishAlphabet)) {
                 mixedWordsCount++;
                 if (mixedWordsCount > MIXED_WORD_THRESHOLD) {
-                    log.info("Message_id={} Mixed languages.", messageId);
+                    log.info("Message_id={} Mixed languages. Count: {}.", messageId, mixedWordsCount);
                     return mixedWordsCount;
                 }
             }
