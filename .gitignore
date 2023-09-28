@@ -9,6 +9,7 @@ todo.txt
 mvnw
 .mvn/
 mvnw.cmd
+
 ### STS ###
 .apt_generated
 .classpath
